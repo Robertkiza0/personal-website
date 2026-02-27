@@ -66,21 +66,8 @@
         <p>&copy; 2025 Robert Kiza</p>
     </footer>
     <link rel="stylesheet" href="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/themes/df-messenger-default.css">
-<style>
-  df-messenger {
-    z-index: 999;
-    position: fixed;
-    --df-messenger-font-color: #000;
-    --df-messenger-font-family: 'Google Sans', sans-serif;
-    --df-messenger-chat-background: #2A56C6;
-    --df-messenger-message-user-background: #d3e3fd;
-    --df-messenger-message-bot-background: #fff;
-    bottom: 16px;
-    right: 16px;
-  }
-</style>
-
 <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
+
 <df-messenger
   location="us-central1"
   project-id="agent-ai-481010"
@@ -93,49 +80,55 @@
   </df-messenger-chat-bubble>
 </df-messenger>
 
+<style>
+  df-messenger {
+    z-index: 999;
+    position: fixed;
+    --df-messenger-font-color: #000;
+    --df-messenger-font-family: 'Google Sans', sans-serif;
+    --df-messenger-chat-background: #2A56C6;
+    bottom: 16px;
+    right: 16px;
+  }
+</style>
+
 <script>
-  (function() {
+  // Wrap everything in a listener to make sure the messenger is ready
+  window.addEventListener('df-messenger-loaded', () => {
     const messenger = document.querySelector('df-messenger');
     let idleTimer;
-    const ONE_MINUTE = 60000; 
+    const ONE_MINUTE = 60000;
 
-    function resetSession() {
-      console.log("Terminating session: reset triggered.");
-      // Clears the Playbook's memory and starts a new session
+    function resetChat() {
+      console.log("Timer expired: Resetting session.");
+      // Forces a brand new session and clears Playbook memory
       messenger.startNewSession({ retainHistory: false });
     }
 
     function startTimer() {
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        resetSession();
-      }, ONE_MINUTE);
+      idleTimer = setTimeout(resetChat, ONE_MINUTE);
     }
 
-    // Monitor messages sent by the user
+    // 1. Reset timer when user sends a message
     window.addEventListener('df-messenger-send-message', (event) => {
       const text = event.detail.text ? event.detail.text.trim() : "";
       
-      // Handle Empty Input
+      // If user sends empty/blank text, kill it and reset
       if (text === "") {
         event.preventDefault();
-        resetSession();
-        return;
+        resetChat();
+      } else {
+        startTimer();
       }
-      
-      // Reset the 1-minute timer on every valid message
-      startTimer();
     });
 
-    // Start timer when chat is opened
+    // 2. Start timer when user opens the chat
     window.addEventListener('df-messenger-chat-opened', startTimer);
 
-    // Reset timer when bot responds (so the minute starts after bot finishes)
+    // 3. Reset timer when the bot finishes speaking
     window.addEventListener('df-messenger-response-received', startTimer);
 
-    // Stop timer if chat is closed to save resources
-    window.addEventListener('df-messenger-chat-closed', () => {
-      clearTimeout(idleTimer);
-    });
-  })();
+    console.log("Ambassador Session Management Active (1 Minute Limit)");
+  });
 </script>
